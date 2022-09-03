@@ -1,0 +1,22 @@
+{
+  "name": "fling-swipe",
+  "version": "1.0.0",
+  "description": "Simple standalone fling/swipe gesture implementation.",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonathanforking/fling-swipe.git"
+  },
+  "author": "jonathanforking",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jonathanforking/fling-swipe/issues"
+  },
+  "homepage": "https://github.com/jonathanforking/fling-swipe#readme",
+  "devDependencies": {
+    "typescript": "^4.8.2"
+  }
+}
