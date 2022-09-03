@@ -1,16 +1,28 @@
-import { addFlingSwipe, SwipeableHTMLElement, Direction } from 'index';
+import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture } from 'index';
 
 // NOTE: in the real world you would obviously keep track and take into account
 // the index of the currently displayed element and maybe shuffle around
 // elements/img sources to allow for endless swiping
 
 const target = document.getElementById('swipeable') as SwipeableHTMLElement;
-// Could also read these from 'src' parameter
 const left = target.children[0] as HTMLElement;
 const middle = target.children[1] as HTMLElement;
 const right = target.children[2] as HTMLElement;
 
-function swipe(src: SwipeableHTMLElement, touchDirection: Direction) {
+function init(src: SwipeableHTMLElement, movement: Movement) {
+  middle.classList.remove('locked');
+  left.classList.remove('locked');
+  right.classList.remove('locked');
+}
+
+function move(src: SwipeableHTMLElement, distance: number) {
+  const percent = distance*100;
+  left.style['transform'] = `translateX(${-100+percent}%)`;
+  middle.style['transform'] = `translateX(${0+percent}%)`;
+  right.style['transform'] = `translateX(${100+percent}%)`;
+}
+
+function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) {
   middle.classList.add('locked');
   switch (touchDirection) {
     case Direction.LEFT:
@@ -36,14 +48,4 @@ function swipe(src: SwipeableHTMLElement, touchDirection: Direction) {
   }
 }
 
-function move(src: SwipeableHTMLElement, distance: number) {
-  middle.classList.remove('locked');
-  left.classList.remove('locked');
-  right.classList.remove('locked');
-  const percent = distance*100;
-  left.style['transform'] = `translateX(${-100+percent}%)`;
-  middle.style['transform'] = `translateX(${0+percent}%)`;
-  right.style['transform'] = `translateX(${100+percent}%)`;
-}
-
-addFlingSwipe(target, swipe, move);
+addFlingSwipe(target, init, move, swipe);

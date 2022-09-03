@@ -1,3 +1,9 @@
+export const enum Movement {
+  HORIZONTAL,
+  VERTICAL,
+  NONE
+}
+
 export const enum Direction {
   LEFT,
   RIGHT,
@@ -10,9 +16,12 @@ export const enum Gesture {
   NONE
 }
 
-export type CompleteCallback = (element: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) => any;
+export type StartCallback = (element: SwipeableHTMLElement, movement: Movement) => any;
 
 export type UpdateCallback = (element: SwipeableHTMLElement, touchDistance: number) => any;
+
+export type CompleteCallback = (element: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) => any;
+
 
 export interface Options {
   /** Speed threshold (in screen % traveled per ms) that needs to be crossed immediately
@@ -23,16 +32,17 @@ export interface Options {
   /** Milliseconds that needs to elapse between touchMove updates (default is 5) */
   updateRate: number,
   /** Touch travel distance (in pixels) before locking to X axis / swipe (default is 0) */
-  xAxisLock: number,
+  horizontalLock: number,
   /** Touch travel distance (in pixels) before locking to Y axis / scroll (default is 0) */
-  yAxisLock: number
+  verticalLock: number
 }
 
 export interface SwipeableHTMLElement extends HTMLElement {
   swipeConfig?: {
     options: Options;
-    complete: CompleteCallback[];
+    start: StartCallback[];
     update: UpdateCallback[];
+    complete: CompleteCallback[];
   };
   swipeProgress?: {
     /** Client coordinates */
@@ -43,17 +53,16 @@ export interface SwipeableHTMLElement extends HTMLElement {
     flingDirection: Direction;
     /** Timestamp of last processed touchmove update */
     lastUpdate: number;
-    /** Is X axis locked right now */
-    isScrolling: boolean;
-    /** Is Y axis locked right now */
-    isSwiping: boolean;
+    /** Determines which axis is locked */
+    movement: Movement;
   };
 }
 
 export function addFlingSwipe(
   element: SwipeableHTMLElement,
-  completeCallback?: CompleteCallback | CompleteCallback[],
+  startCallback?: StartCallback | StartCallback[],
   updateCallback?: UpdateCallback | UpdateCallback[],
+  completeCallback?: CompleteCallback | CompleteCallback[],
   options?: Partial<Options>
 ) {
   element.swipeConfig = element.swipeConfig ?? {
@@ -61,25 +70,31 @@ export function addFlingSwipe(
       flingSpeed: 0.005,
       swipeDistance: 0.5,
       updateRate: 5,
-      xAxisLock: 0,
-      yAxisLock: 0
+      horizontalLock: 0,
+      verticalLock: 0
     },
-    complete: [],
-    update: []
+    update: [],
+    start: [],
+    complete: []
   };
   const config = element.swipeConfig;
 
   if (options) {
     config.options = { ...config.options, ...options };
   }
-  if (completeCallback) {
-    config.complete = [...new Set(
-      config.complete.concat(completeCallback)
+  if (startCallback) {
+    config.start = [...new Set(
+      config.start.concat(startCallback)
     )];
   }
   if (updateCallback) {
     config.update = [...new Set(
       config.update.concat(updateCallback)
+    )];
+  }
+  if (completeCallback) {
+    config.complete = [...new Set(
+      config.complete.concat(completeCallback)
     )];
   }
 
@@ -89,8 +104,7 @@ export function addFlingSwipe(
     distance: 0,
     flingDirection: Direction.NONE,
     lastUpdate: 0,
-    isScrolling: false,
-    isSwiping: false
+    movement: Movement.NONE
   }
 
   element.addEventListener('touchstart', startTouch, { passive: true });
@@ -100,15 +114,16 @@ export function addFlingSwipe(
 
 export function removeFlingSwipe(
   element: SwipeableHTMLElement, 
-  completeCallback?: CompleteCallback | CompleteCallback[],
-  updateCallback?: UpdateCallback | UpdateCallback[]
+  startCallback?: StartCallback | StartCallback[],
+  updateCallback?: UpdateCallback | UpdateCallback[],
+  completeCallback?: CompleteCallback | CompleteCallback[]
 ) {
   if (element.swipeConfig) {
-    if (completeCallback) {
-      if (Array.isArray(completeCallback)) {
-        element.swipeConfig.complete = element.swipeConfig.complete.filter(v => !completeCallback.includes(v));
+    if (startCallback) {
+      if (Array.isArray(startCallback)) {
+        element.swipeConfig.start = element.swipeConfig.start.filter(v => !startCallback.includes(v));
       } else {
-        element.swipeConfig.complete = element.swipeConfig.complete.filter(v => v !== completeCallback);
+        element.swipeConfig.start = element.swipeConfig.start.filter(v => v !== startCallback);
       }
     }
     if (updateCallback) {
@@ -118,11 +133,18 @@ export function removeFlingSwipe(
         element.swipeConfig.update = element.swipeConfig.update.filter(v => v !== updateCallback);
       }
     }
+    if (completeCallback) {
+      if (Array.isArray(completeCallback)) {
+        element.swipeConfig.complete = element.swipeConfig.complete.filter(v => !completeCallback.includes(v));
+      } else {
+        element.swipeConfig.complete = element.swipeConfig.complete.filter(v => v !== completeCallback);
+      }
+    }
   }
 
   if (
-    (!completeCallback && !updateCallback) || 
-    (element.swipeConfig?.complete.length === 0 && element.swipeConfig?.update.length === 0)
+    (!startCallback && !updateCallback && !completeCallback) || 
+    (element.swipeConfig?.start.length === 0 && element.swipeConfig?.update.length === 0 && element.swipeConfig?.complete.length === 0)
   ) {
     element.removeEventListener('touchstart', startTouch);
     element.removeEventListener('touchmove', dragTouch);
@@ -132,13 +154,13 @@ export function removeFlingSwipe(
   }
 }
 
-function processCallbacks<T extends CompleteCallback | UpdateCallback>(
+function processCallbacks<T extends StartCallback | UpdateCallback | CompleteCallback>(
   callbacks: T[],
   ...params: Parameters<T>
 ) {
   for (let i = 0, l = callbacks.length; i < l; i++) {
-    // Unfortunately typescript fails here
-    callbacks[i](...params as [any, any, any]);
+    // @ts-ignore Unfortunately typescript fails here
+    callbacks[i](...params);
   }
 }
 
@@ -153,21 +175,26 @@ function dragTouch(e: TouchEvent) {
   const target = e.currentTarget as SwipeableHTMLElement;
   const progress = target.swipeProgress!;
 
-  if (progress.isScrolling) {
+  if (progress.movement === Movement.VERTICAL) {
     return;
   }
 
   const config = target.swipeConfig!;
   const options = config.options;
 
-  if (!progress.isSwiping) {
+  if (progress.movement === Movement.NONE) {
     const xAbsDist = Math.abs(e.touches[0].clientX - progress.startX);
     const yAbsDist = Math.abs(e.touches[0].clientY - progress.startY);
-    progress.isSwiping = xAbsDist > yAbsDist && xAbsDist > options.xAxisLock;
-    progress.isScrolling = yAbsDist > xAbsDist && yAbsDist > options.yAxisLock;
+    if (xAbsDist > yAbsDist && xAbsDist > options.horizontalLock) {
+      processCallbacks(config.start, target, Movement.HORIZONTAL);
+      progress.movement = Movement.HORIZONTAL;
+    } else if (yAbsDist > xAbsDist && yAbsDist > options.verticalLock) {
+      processCallbacks(config.start, target, Movement.VERTICAL);
+      progress.movement = Movement.VERTICAL;
+    }
   }
 
-  if (progress.isSwiping) {
+  if (progress.movement === Movement.HORIZONTAL) {
     e.preventDefault();
     e.stopImmediatePropagation();
     const timePassed = e.timeStamp - progress.lastUpdate;
@@ -233,7 +260,6 @@ function endTouch(e: TouchEvent) {
     distance: 0,
     flingDirection: Direction.NONE,
     lastUpdate: 0,
-    isScrolling: false,
-    isSwiping: false
+    movement: Movement.NONE
   };
 }

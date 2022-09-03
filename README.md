@@ -1,8 +1,6 @@
 # fling-swipe
 
-This is a small and self-contained implementation of the 'swipe' gesture. It also features 'fling' support, which triggers registered callbacks when the cursor movement meets a speed threshold (rather than distance).  
-
-This library is intentionally kept simple and might not be as feature-rich as alternatives. It can still be pretty useful if it fits your use-case, due to its performance and configurability.
+This is a small and self-contained typescript implementation of the 'swipe' gesture. It also features 'fling' support, which triggers registered callbacks when the cursor movement meets a speed threshold (rather than distance).  
 
 ## Installation
 
@@ -71,19 +69,37 @@ html, body {
 
 example.ts
 ```ts
-import { addFlingSwipe, SwipeableHTMLElement, Direction } from 'index';
+import { 
+  addFlingSwipe, 
+  SwipeableHTMLElement, 
+  Movement, 
+  Direction, 
+  Gesture 
+} from 'fling-swipe';
 
 // NOTE: in the real world you would obviously keep track and take into account
 // the index of the currently displayed element and maybe shuffle around
 // elements/img sources to allow for endless swiping
 
 const target = document.getElementById('swipeable') as SwipeableHTMLElement;
-// Could also read these from 'src' parameter
 const left = target.children[0] as HTMLElement;
 const middle = target.children[1] as HTMLElement;
 const right = target.children[2] as HTMLElement;
 
-function swipe(src: SwipeableHTMLElement, touchDirection: Direction) {
+function init(src: SwipeableHTMLElement, movement: Movement) {
+  middle.classList.remove('locked');
+  left.classList.remove('locked');
+  right.classList.remove('locked');
+}
+
+function move(src: SwipeableHTMLElement, distance: number) {
+  const percent = distance*100;
+  left.style['transform'] = `translateX(${-100+percent}%)`;
+  middle.style['transform'] = `translateX(${0+percent}%)`;
+  right.style['transform'] = `translateX(${100+percent}%)`;
+}
+
+function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) {
   middle.classList.add('locked');
   switch (touchDirection) {
     case Direction.LEFT:
@@ -109,17 +125,7 @@ function swipe(src: SwipeableHTMLElement, touchDirection: Direction) {
   }
 }
 
-function move(src: SwipeableHTMLElement, distance: number) {
-  middle.classList.remove('locked');
-  left.classList.remove('locked');
-  right.classList.remove('locked');
-  const percent = distance*100;
-  left.style['transform'] = `translateX(${-100+percent}%)`;
-  middle.style['transform'] = `translateX(${0+percent}%)`;
-  right.style['transform'] = `translateX(${100+percent}%)`;
-}
-
-addFlingSwipe(target, swipe, move);
+addFlingSwipe(target, init, move, swipe);
 ```
 
 #### SPA support
@@ -134,7 +140,7 @@ function MyComponent() {
   useEffect(() => {
     addFlingSwipe(swipeable.current, /* your callbacks and options */);
     return () => {
-      removeFlingSwipe(swipeable.current)
+      removeFlingSwipe(swipeable.current);
     };
   }, []);
 
