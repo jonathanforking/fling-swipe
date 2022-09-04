@@ -5,8 +5,10 @@ export const enum Movement {
 }
 
 export const enum Direction {
-  LEFT,
+  TOP,
   RIGHT,
+  BOTTOM,
+  LEFT,
   NONE
 }
 
@@ -16,14 +18,25 @@ export const enum Gesture {
   NONE
 }
 
+export const enum Mode {
+  HORIZONTAL,
+  VERTICAL,
+  BOTH
+}
+
 export type StartCallback = (element: SwipeableHTMLElement, movement: Movement) => any;
 
 export type UpdateCallback = (element: SwipeableHTMLElement, touchDistance: number) => any;
 
 export type CompleteCallback = (element: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) => any;
 
+// TODO:
+// - separate speed & distance values for horizontal/vertical
+// - use vector for movement detection
 
 export interface Options {
+  /** What movements should be considered (default is Mode.HORIZONTAL) */
+  mode: Mode,
   /** Speed threshold (in screen % traveled per ms) that needs to be crossed immediately
    * before ending touch for it to count as a 'fling' (default is 0.005 = 0.5%) */
   flingSpeed: number,
@@ -67,6 +80,7 @@ export function addFlingSwipe(
 ) {
   element.swipeConfig = element.swipeConfig ?? {
     options: {
+      mode: Mode.HORIZONTAL,
       flingSpeed: 0.005,
       swipeDistance: 0.5,
       updateRate: 5,
@@ -174,39 +188,52 @@ function startTouch(e: TouchEvent) {
 function dragTouch(e: TouchEvent) {
   const target = e.currentTarget as SwipeableHTMLElement;
   const progress = target.swipeProgress!;
-
-  if (progress.movement === Movement.VERTICAL) {
-    return;
-  }
-
   const config = target.swipeConfig!;
   const options = config.options;
 
   if (progress.movement === Movement.NONE) {
     const xAbsDist = Math.abs(e.touches[0].clientX - progress.startX);
     const yAbsDist = Math.abs(e.touches[0].clientY - progress.startY);
-    if (xAbsDist > yAbsDist && xAbsDist > options.horizontalLock) {
-      processCallbacks(config.start, target, Movement.HORIZONTAL);
-      progress.movement = Movement.HORIZONTAL;
-    } else if (yAbsDist > xAbsDist && yAbsDist > options.verticalLock) {
-      processCallbacks(config.start, target, Movement.VERTICAL);
-      progress.movement = Movement.VERTICAL;
+    switch (options.mode) {
+      case Mode.HORIZONTAL:
+        if (xAbsDist > options.horizontalLock) {
+          processCallbacks(config.start, target, Movement.HORIZONTAL);
+          progress.movement = Movement.HORIZONTAL;
+        }
+        break;
+      case Mode.VERTICAL:
+        if (yAbsDist > options.verticalLock) {
+          processCallbacks(config.start, target, Movement.VERTICAL);
+          progress.movement = Movement.VERTICAL;
+        }
+        break;
+      case Mode.BOTH:
+        if (xAbsDist > yAbsDist && xAbsDist > options.horizontalLock) {
+          processCallbacks(config.start, target, Movement.HORIZONTAL);
+          progress.movement = Movement.HORIZONTAL;
+        } else if (yAbsDist > xAbsDist && yAbsDist > options.verticalLock) {
+          processCallbacks(config.start, target, Movement.VERTICAL);
+          progress.movement = Movement.VERTICAL;
+        }
+        break;
     }
-  }
-
-  if (progress.movement === Movement.HORIZONTAL) {
+  } else {
     e.preventDefault();
     e.stopImmediatePropagation();
     const timePassed = e.timeStamp - progress.lastUpdate;
     if (timePassed < options.updateRate) {
       return;
     }
-    const newDist = (e.touches[0].clientX - progress.startX) / window.innerWidth;
+    const newDist = progress.movement === Movement.HORIZONTAL
+      ? (e.touches[0].clientX - progress.startX) / window.innerWidth
+      : (e.touches[0].clientY - progress.startY) / window.innerHeight;
     const speed = Math.abs(newDist - progress.distance) / timePassed;
     if (speed >= options.flingSpeed) {
       // Decide fling direction based on difference to last update (rather than total distance).
-      // Fling direction then has to match swipe direction in endTouch for it to be valid.
-      progress.flingDirection = newDist > progress.distance ? Direction.RIGHT : Direction.LEFT;
+      // Fling direction then has to match overall swipe direction in endTouch for it to be valid.
+      progress.flingDirection = newDist > progress.distance
+        ? progress.movement === Movement.HORIZONTAL ? Direction.RIGHT : Direction.BOTTOM
+        : progress.movement === Movement.HORIZONTAL ? Direction.LEFT : Direction.TOP;
     } else {
       progress.flingDirection = Direction.NONE;
     }
@@ -221,14 +248,17 @@ function endTouch(e: TouchEvent) {
   const config = target.swipeConfig!;
   const progress = target.swipeProgress!;
 
+  const GREATER = progress.movement === Movement.HORIZONTAL ? Direction.RIGHT : Direction.BOTTOM;
+  const SMALLER = progress.movement === Movement.HORIZONTAL ? Direction.LEFT : Direction.TOP;
+
   switch (progress.flingDirection) {
     case Direction.NONE:
     {
       // Check for swipe
       if (progress.distance > config.options.swipeDistance) {
-        processCallbacks(config.complete, target, Direction.RIGHT, Gesture.SWIPE);
+        processCallbacks(config.complete, target, GREATER, Gesture.SWIPE);
       } else if (progress.distance < -config.options.swipeDistance) {
-        processCallbacks(config.complete, target, Direction.LEFT, Gesture.SWIPE);
+        processCallbacks(config.complete, target, SMALLER, Gesture.SWIPE);
       } else {
         processCallbacks(config.complete, target, Direction.NONE, Gesture.NONE);
       }
@@ -237,7 +267,7 @@ function endTouch(e: TouchEvent) {
     case Direction.RIGHT:
     {
       if (progress.distance > 0) {
-        processCallbacks(config.complete, target, Direction.RIGHT, Gesture.FLING);
+        processCallbacks(config.complete, target, GREATER, Gesture.FLING);
       } else {
         processCallbacks(config.complete, target, Direction.NONE, Gesture.NONE);
       }
@@ -246,7 +276,7 @@ function endTouch(e: TouchEvent) {
     case Direction.LEFT:
     {
       if (progress.distance < 0) {
-        processCallbacks(config.complete, target, Direction.LEFT, Gesture.FLING);
+        processCallbacks(config.complete, target, SMALLER, Gesture.FLING);
       } else {
         processCallbacks(config.complete, target, Direction.NONE, Gesture.NONE);
       }

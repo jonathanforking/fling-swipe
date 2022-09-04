@@ -1,8 +1,8 @@
-import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture } from 'index';
+import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture, Mode } from 'index';
 
 // NOTE: in the real world you would obviously keep track and take into account
-// the index of the currently displayed element and maybe shuffle around
-// elements/img sources to allow for endless swiping
+// the index of the currently displayed element and shuffle around
+// elements/img sources to allow for endless swiping and virtualization
 
 const target = document.getElementById('swipeable') as SwipeableHTMLElement;
 const left = target.children[0] as HTMLElement;
@@ -48,4 +48,4 @@ function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Ge
   }
 }
 
-addFlingSwipe(target, init, move, swipe);
+addFlingSwipe(target, init, move, swipe, { mode: Mode.HORIZONTAL });

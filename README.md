@@ -1,6 +1,8 @@
-# fling-swipe
+# General
 
-This is a small and self-contained typescript implementation of the 'swipe' gesture. It also features 'fling' support, which triggers registered callbacks when the cursor movement meets a speed threshold (rather than distance).  
+fling-swipe is a small and self-contained typescript implementation of the 'swipe' gesture. It also features 'fling' support, which triggers registered callbacks when the finger movement meets a speed threshold (rather than distance).  
+
+Note that this doesn't provide ready-to-use components, but a logical building block to create your own.
 
 ## Installation
 
@@ -74,7 +76,8 @@ import {
   SwipeableHTMLElement, 
   Movement, 
   Direction, 
-  Gesture 
+  Gesture,
+  Mode
 } from 'fling-swipe';
 
 // NOTE: in the real world you would obviously keep track and take into account
@@ -125,7 +128,7 @@ function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Ge
   }
 }
 
-addFlingSwipe(target, init, move, swipe);
+addFlingSwipe(target, init, move, swipe, { mode: Mode.HORIZONTAL });
 ```
 
 #### SPA support
