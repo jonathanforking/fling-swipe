@@ -1,4 +1,4 @@
-import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture, Mode } from 'index';
+import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture } from 'index';
 
 // NOTE: in the real world you would obviously keep track and take into account
 // the index of the currently displayed element and shuffle around
@@ -10,6 +10,7 @@ const middle = target.children[1] as HTMLElement;
 const right = target.children[2] as HTMLElement;
 
 function init(src: SwipeableHTMLElement, movement: Movement) {
+  // 'locked' class smoothes element movement -> remove during user interaction
   middle.classList.remove('locked');
   left.classList.remove('locked');
   right.classList.remove('locked');
@@ -23,6 +24,7 @@ function move(src: SwipeableHTMLElement, distance: number) {
 }
 
 function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) {
+  // Add 'locked' classes again to ensure elements smoothly move to their new positions
   middle.classList.add('locked');
   switch (touchDirection) {
     case Direction.LEFT:
@@ -38,7 +40,6 @@ function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Ge
       right.style.removeProperty('transform');
       break;
     case Direction.NONE:
-      // Ensure that we snap back smoothly if no swipe condition was met
       left.classList.add('locked');
       right.classList.add('locked');
       middle.style.removeProperty('transform');
@@ -48,4 +49,4 @@ function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Ge
   }
 }
 
-addFlingSwipe(target, init, move, swipe, { mode: Mode.HORIZONTAL });
+addFlingSwipe(target, init, move, swipe);

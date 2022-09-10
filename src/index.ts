@@ -1,5 +1,5 @@
 export const enum Movement {
-  HORIZONTAL,
+  HORIZONTAL = 0,
   VERTICAL,
   NONE
 }
@@ -19,8 +19,8 @@ export const enum Gesture {
 }
 
 export const enum Mode {
-  HORIZONTAL,
-  VERTICAL,
+  HORIZONTAL = Movement.HORIZONTAL,
+  VERTICAL = Movement.VERTICAL,
   BOTH
 }
 
@@ -32,7 +32,6 @@ export type CompleteCallback = (element: SwipeableHTMLElement, touchDirection: D
 
 // TODO:
 // - separate speed & distance values for horizontal/vertical
-// - use vector for movement detection
 
 export interface Options {
   /** What movements should be considered (default is Mode.HORIZONTAL) */
@@ -42,7 +41,7 @@ export interface Options {
   flingSpeed: number,
   /** Touch travel distance (in screen %) to count as a swipe (default is 0.5 = 50%) */
   swipeDistance: number,
-  /** Milliseconds that needs to elapse between touchMove updates (default is 5) */
+  /** Milliseconds that need to elapse between touchMove updates (default is 5) */
   updateRate: number,
   /** Touch travel distance (in pixels) before locking to X axis / swipe (default is 0) */
   horizontalLock: number,
@@ -92,7 +91,6 @@ export function addFlingSwipe(
     complete: []
   };
   const config = element.swipeConfig;
-
   if (options) {
     config.options = { ...config.options, ...options };
   }
@@ -111,7 +109,6 @@ export function addFlingSwipe(
       config.complete.concat(completeCallback)
     )];
   }
-
   element.swipeProgress = {
     startX: 0,
     startY: 0,
@@ -120,7 +117,17 @@ export function addFlingSwipe(
     lastUpdate: 0,
     movement: Movement.NONE
   }
-
+  switch (config.options.mode) {
+    case Mode.HORIZONTAL:
+      element.style.touchAction = 'pan-y pinch-zoom';
+      break;
+    case Mode.VERTICAL:
+      element.style.touchAction = 'pan-x pinch-zoom';
+      break;
+    case Mode.BOTH:
+      element.style.touchAction = 'pinch-zoom';
+      break;
+  }
   element.addEventListener('touchstart', startTouch, { passive: true });
   element.addEventListener('touchmove', dragTouch, { passive: false });
   element.addEventListener('touchend', endTouch, { passive: true });
@@ -155,14 +162,14 @@ export function removeFlingSwipe(
       }
     }
   }
-
   if (
     (!startCallback && !updateCallback && !completeCallback) || 
     (element.swipeConfig?.start.length === 0 && element.swipeConfig?.update.length === 0 && element.swipeConfig?.complete.length === 0)
   ) {
     element.removeEventListener('touchstart', startTouch);
     element.removeEventListener('touchmove', dragTouch);
-    element.removeEventListener('touchend', endTouch);  
+    element.removeEventListener('touchend', endTouch);
+    element.style.removeProperty('touch-action');
     delete element.swipeConfig;
     delete element.swipeProgress;
   }
@@ -190,50 +197,44 @@ function dragTouch(e: TouchEvent) {
   const progress = target.swipeProgress!;
   const config = target.swipeConfig!;
   const options = config.options;
-
+  const xDist = e.touches[0].clientX - progress.startX;
+  const yDist = e.touches[0].clientY - progress.startY;
   if (progress.movement === Movement.NONE) {
-    const xAbsDist = Math.abs(e.touches[0].clientX - progress.startX);
-    const yAbsDist = Math.abs(e.touches[0].clientY - progress.startY);
-    switch (options.mode) {
-      case Mode.HORIZONTAL:
-        if (xAbsDist > options.horizontalLock) {
-          processCallbacks(config.start, target, Movement.HORIZONTAL);
-          progress.movement = Movement.HORIZONTAL;
-        }
-        break;
-      case Mode.VERTICAL:
-        if (yAbsDist > options.verticalLock) {
-          processCallbacks(config.start, target, Movement.VERTICAL);
-          progress.movement = Movement.VERTICAL;
-        }
-        break;
-      case Mode.BOTH:
-        if (xAbsDist > yAbsDist && xAbsDist > options.horizontalLock) {
-          processCallbacks(config.start, target, Movement.HORIZONTAL);
-          progress.movement = Movement.HORIZONTAL;
-        } else if (yAbsDist > xAbsDist && yAbsDist > options.verticalLock) {
-          processCallbacks(config.start, target, Movement.VERTICAL);
-          progress.movement = Movement.VERTICAL;
-        }
-        break;
+    // TODO: evaluate vector based movement detection
+    // const movX = progress.startX + e.touches[0].clientX;
+    // const movY = progress.startY + e.touches[0].clientY;
+    // const mag = Math.sqrt(movX**2 + movY**2);
+    // const deg = (Math.atan2(movY, movX) * 180 / Math.PI + 360) % 360;
+    const xAbsDist = Math.abs(xDist);
+    const yAbsDist = Math.abs(yDist);
+    if (xAbsDist > yAbsDist && xAbsDist > options.horizontalLock) {
+      processCallbacks(config.start, target, Movement.HORIZONTAL);
+      progress.movement = Movement.HORIZONTAL;
+    } else if (yAbsDist > xAbsDist && yAbsDist > options.verticalLock) {
+      processCallbacks(config.start, target, Movement.VERTICAL);
+      progress.movement = Movement.VERTICAL;
     }
-  } else {
+  } else if (options.mode === (progress.movement as unknown as Mode) || options.mode === Mode.BOTH) {
+    // progress.movement can only be HORIZONTAL or VERTICAL here, both of which have equivalent Modes
+    // => this makes the cast above okay. The condition is necessary to ensure we only cancel events
+    // when we are certain that we don't mess with the browsers native event handling
     e.preventDefault();
     e.stopImmediatePropagation();
     const timePassed = e.timeStamp - progress.lastUpdate;
     if (timePassed < options.updateRate) {
       return;
     }
-    const newDist = progress.movement === Movement.HORIZONTAL
-      ? (e.touches[0].clientX - progress.startX) / window.innerWidth
-      : (e.touches[0].clientY - progress.startY) / window.innerHeight;
+    // !progress.movement <=> progress.movement === Movement.HORIZONTAL
+    const newDist = !progress.movement
+      ? xDist / window.innerWidth
+      : yDist / window.innerHeight;
     const speed = Math.abs(newDist - progress.distance) / timePassed;
     if (speed >= options.flingSpeed) {
       // Decide fling direction based on difference to last update (rather than total distance).
       // Fling direction then has to match overall swipe direction in endTouch for it to be valid.
       progress.flingDirection = newDist > progress.distance
-        ? progress.movement === Movement.HORIZONTAL ? Direction.RIGHT : Direction.BOTTOM
-        : progress.movement === Movement.HORIZONTAL ? Direction.LEFT : Direction.TOP;
+        ? !progress.movement ? Direction.RIGHT : Direction.BOTTOM
+        : !progress.movement ? Direction.LEFT : Direction.TOP;
     } else {
       progress.flingDirection = Direction.NONE;
     }
@@ -247,10 +248,8 @@ function endTouch(e: TouchEvent) {
   const target = e.currentTarget as SwipeableHTMLElement;
   const config = target.swipeConfig!;
   const progress = target.swipeProgress!;
-
-  const GREATER = progress.movement === Movement.HORIZONTAL ? Direction.RIGHT : Direction.BOTTOM;
-  const SMALLER = progress.movement === Movement.HORIZONTAL ? Direction.LEFT : Direction.TOP;
-
+  const GREATER = !progress.movement ? Direction.RIGHT : Direction.BOTTOM;
+  const SMALLER = !progress.movement ? Direction.LEFT : Direction.TOP;
   switch (progress.flingDirection) {
     case Direction.NONE:
     {
@@ -282,8 +281,7 @@ function endTouch(e: TouchEvent) {
       }
       break;
     }
-  }
-  
+  }  
   target.swipeProgress = {
     startX: 0,
     startY: 0,
