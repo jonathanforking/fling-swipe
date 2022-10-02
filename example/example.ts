@@ -1,52 +1,130 @@
-import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture } from 'index';
+import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture, Mode } from 'index';
 
-// NOTE: in the real world you would obviously keep track and take into account
-// the index of the currently displayed element and shuffle around
-// elements/img sources to allow for endless swiping and virtualization
+// Maps order of CSS transforms to DIV elements inside swipeable 
+const enum ChildIndex {
+  LEFT,
+  MIDDLE,
+  RIGHT,
+  TOP,
+  BOTTOM
+}
 
-const target = document.getElementById('swipeable') as SwipeableHTMLElement;
-const left = target.children[0] as HTMLElement;
-const middle = target.children[1] as HTMLElement;
-const right = target.children[2] as HTMLElement;
+// Globals for convenience
+let moveHorizontal = false;
+let direction = Direction.NONE;
+const colors = [
+  [null, 'yellow', null],
+  ['red', 'blue', 'green'],
+  [null, 'turquoise', null]
+];
 
 function init(src: SwipeableHTMLElement, movement: Movement) {
   // 'locked' class smoothes element movement -> remove during user interaction
-  middle.classList.remove('locked');
-  left.classList.remove('locked');
-  right.classList.remove('locked');
+  for (const child of src.children) {
+    child.classList.remove('locked');
+  }
+  moveHorizontal = movement === Movement.HORIZONTAL;
 }
 
 function move(src: SwipeableHTMLElement, distance: number) {
+  const children = src.children as HTMLCollectionOf<HTMLElement>;
   const percent = distance*100;
-  left.style['transform'] = `translateX(${-100+percent}%)`;
-  middle.style['transform'] = `translateX(${0+percent}%)`;
-  right.style['transform'] = `translateX(${100+percent}%)`;
+  if (moveHorizontal) {
+    children[ChildIndex.LEFT].style['transform'] = `translateX(${-100+percent}%)`;
+    children[ChildIndex.MIDDLE].style['transform'] = `translateX(${0+percent}%)`;
+    children[ChildIndex.RIGHT].style['transform'] = `translateX(${100+percent}%)`;
+  } else {
+    children[ChildIndex.TOP].style['transform'] = `translateY(${-100+percent}%)`;
+    children[ChildIndex.MIDDLE].style['transform'] = `translateY(${0+percent}%)`;
+    children[ChildIndex.BOTTOM].style['transform'] = `translateY(${100+percent}%)`;
+  }
 }
 
 function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) {
+  direction = touchDirection;
+  src.addEventListener('transitionend', elementShuffle, { once: true });
+  const children = src.children as HTMLCollectionOf<HTMLElement>;
   // Add 'locked' classes again to ensure elements smoothly move to their new positions
-  middle.classList.add('locked');
+  children[ChildIndex.MIDDLE].classList.add('locked');
   switch (touchDirection) {
     case Direction.LEFT:
-      middle.style['transform'] = 'translateX(-100%)';
-      right.classList.add('locked');
-      right.style['transform'] = 'translateX(0%)';
-      left.style.removeProperty('transform');
+      children[ChildIndex.RIGHT].classList.add('locked');
+      children[ChildIndex.RIGHT].style['transform'] = 'translateX(0%)';
+      children[ChildIndex.MIDDLE].style['transform'] = 'translateX(-100%)';
+      children[ChildIndex.LEFT].style.removeProperty('transform');
       break;
     case Direction.RIGHT:
-      middle.style['transform'] = 'translateX(100%)';
-      left.classList.add('locked');
-      left.style['transform'] = 'translateX(0%)';
-      right.style.removeProperty('transform');
+      children[ChildIndex.LEFT].classList.add('locked');
+      children[ChildIndex.LEFT].style['transform'] = 'translateX(0%)';
+      children[ChildIndex.MIDDLE].style['transform'] = 'translateX(100%)';
+      children[ChildIndex.RIGHT].style.removeProperty('transform');
+      break;
+    case Direction.TOP:
+      children[ChildIndex.BOTTOM].classList.add('locked');
+      children[ChildIndex.BOTTOM].style['transform'] = 'translateY(0%)';
+      children[ChildIndex.MIDDLE].style['transform'] = 'translateY(-100%)';
+      children[ChildIndex.TOP].style.removeProperty('transform');
+      break;
+    case Direction.BOTTOM:
+      children[ChildIndex.TOP].classList.add('locked');
+      children[ChildIndex.TOP].style['transform'] = 'translateY(0%)';
+      children[ChildIndex.MIDDLE].style['transform'] = 'translateY(100%)';
+      children[ChildIndex.BOTTOM].style.removeProperty('transform');
       break;
     case Direction.NONE:
-      left.classList.add('locked');
-      right.classList.add('locked');
-      middle.style.removeProperty('transform');
-      left.style.removeProperty('transform');
-      right.style.removeProperty('transform');
+      for (const child of children) {
+        child.classList.add('locked');
+        child.style.removeProperty('transform');
+      }
       break;
   }
 }
 
-addFlingSwipe(target, init, move, swipe);
+function elementShuffle(e: TransitionEvent) {
+  // color shuffle
+  switch (direction) {
+    case Direction.LEFT:
+      colors[1].push(colors[1].shift()!);
+      break;
+    case Direction.RIGHT:
+      colors[1].unshift(colors[1].pop()!);
+      break;
+    case Direction.TOP:
+      colors[2][0] = colors[0][1];  // tmp
+      colors[0][1] = colors[1][1];
+      colors[1][1] = colors[2][1];
+      colors[2].unshift(colors[2].pop()!);
+      break;
+    case Direction.BOTTOM:
+      colors[0][0] = colors[2][1];  // tmp
+      colors[2][1] = colors[1][1];
+      colors[1][1] = colors[0][1];
+      colors[0].unshift(colors[0].pop()!);
+      break;
+  }
+  const parent = (e.target as HTMLElement).parentElement!;
+  for (const child of (parent.children as HTMLCollectionOf<HTMLElement>)) {
+    child.classList.remove('locked');
+    child.style.removeProperty('transform');
+  }
+  applyColors(parent);
+  // Double RAF necessary here to avoid rendering another transition
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    for (const child of (parent.children as HTMLCollectionOf<HTMLElement>)) {
+      child.classList.add('locked');
+    }
+  }));
+}
+
+function applyColors(parent: HTMLElement) {
+  const children = parent.children as HTMLCollectionOf<HTMLElement>;
+  children[ChildIndex.TOP].style.setProperty('background-color', colors[0][1]);
+  children[ChildIndex.LEFT].style.setProperty('background-color', colors[1][0]);
+  children[ChildIndex.MIDDLE].style.setProperty('background-color', colors[1][1]);
+  children[ChildIndex.RIGHT].style.setProperty('background-color', colors[1][2]);
+  children[ChildIndex.BOTTOM].style.setProperty('background-color', colors[2][1]);
+}
+
+const target = document.getElementById('swipeable') as SwipeableHTMLElement;
+applyColors(target);
+addFlingSwipe(target, init, move, swipe, { mode: Mode.BOTH });

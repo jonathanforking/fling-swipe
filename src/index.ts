@@ -216,7 +216,7 @@ function dragTouch(e: TouchEvent) {
     }
   } else if (options.mode === (progress.movement as unknown as Mode) || options.mode === Mode.BOTH) {
     // progress.movement can only be HORIZONTAL or VERTICAL here, both of which have equivalent Modes
-    // => this makes the cast above okay. The condition is necessary to ensure we only cancel events
+    // -> this makes the cast above okay. The condition is necessary to ensure we only cancel events
     // when we are certain that we don't mess with the browsers native event handling
     e.preventDefault();
     e.stopImmediatePropagation();
@@ -224,8 +224,7 @@ function dragTouch(e: TouchEvent) {
     if (timePassed < options.updateRate) {
       return;
     }
-    // !progress.movement <=> progress.movement === Movement.HORIZONTAL
-    const newDist = !progress.movement
+    const newDist = !progress.movement  // <=> progress.movement === Movement.HORIZONTAL
       ? xDist / window.innerWidth
       : yDist / window.innerHeight;
     const speed = Math.abs(newDist - progress.distance) / timePassed;

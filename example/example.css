@@ -4,7 +4,7 @@ html, body {
 
 #swipeable {
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden;
   width: 100vw;
   height: 200px;
 }
@@ -16,16 +16,19 @@ html, body {
   margin: auto;
 }
 #swipeable > div:nth-child(1) {
-  background-color: red;
   transform: translateX(-100%);
 }
 #swipeable > div:nth-child(2) {
-  background-color: green;
   transform: translateX(0%);
 }
 #swipeable > div:nth-child(3) {
-  background-color: blue;
   transform: translateX(100%);
+}
+#swipeable > div:nth-child(4) {
+  transform: translateY(-100%);
+}
+#swipeable > div:nth-child(5) {
+  transform: translateY(100%);
 }
 
 .locked {

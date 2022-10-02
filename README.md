@@ -2,7 +2,7 @@
 
 fling-swipe is a small and self-contained typescript implementation of the 'swipe' gesture. It also features 'fling' support, which triggers registered callbacks when the finger movement meets a speed threshold (rather than distance).  
 
-Note that this doesn't provide ready-to-use components, but a logical building block to create your own.
+Note that this package doesn't provide ready-to-use components, but a logical building block to create your own.
 
 ## Installation
 
@@ -130,6 +130,8 @@ html, body {
   transition: transform 200ms linear;
 }
 ```
+
+A slightly more complicated example can be found [here](/example/).
 
 #### SPA support
 
