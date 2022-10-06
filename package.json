@@ -1,7 +1,7 @@
 {
   "name": "fling-swipe",
-  "version": "0.9.0",
-  "description": "Simple standalone fling/swipe gesture implementation.",
+  "version": "0.9.1",
+  "description": "Simple standalone fling/swipe gesture implementation written in TypeScript.",
   "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,5 +18,8 @@
   "homepage": "https://github.com/jonathanforking/fling-swipe#readme",
   "devDependencies": {
     "typescript": "^4.8.2"
-  }
+  },
+  "files": [
+    "src/*"
+  ]
 }
