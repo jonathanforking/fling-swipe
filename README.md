@@ -12,14 +12,9 @@ npm i fling-swipe
 
 ## Usage
 
-### Parameters
+There are 2 functions provided in this library, `addFlingSwipe` sets up gesture options and callbacks on an HTML element, while `removeFlingSwipe` deletes them. The examples below show their basic usage, but for better understanding it is recommended to take a look at the type definitions at the start of [index.ts](/src/index.ts) as well.
 
-```ts
-```
-
-### Examples
-
-#### Standalone
+### Standalone example
 
 example.ts
 ```ts
@@ -31,9 +26,9 @@ import {
   Gesture
 } from 'fling-swipe';
 
-// NOTE: in the real world you would obviously keep track and take into account
-// the index of the currently displayed element and shuffle around
-// elements/img sources to allow for endless swiping and virtualization
+// NOTE: in the real world you would keep track of and take into account
+// the index of the currently displayed element so you can shuffle around
+// displayed data/elements to allow for endless swiping and virtualization
 
 const target = document.getElementById('swipeable') as SwipeableHTMLElement;
 const left = target.children[0] as HTMLElement;
@@ -55,8 +50,10 @@ function move(src: SwipeableHTMLElement, distance: number) {
 }
 
 function swipe(src: SwipeableHTMLElement, touchDirection: Direction, gesture: Gesture) {
-  // Add 'locked' classes again to ensure elements smoothly move to their new positions
+  // Add 'locked' classes to ensure elements smoothly move to their new positions
   middle.classList.add('locked');
+  // Note that the 'touchDirection' is opposite to the element we want to switch to
+  // -> e.g. if the thumb moves left, we scroll to the right hand side
   switch (touchDirection) {
     case Direction.LEFT:
       middle.style['transform'] = 'translateX(-100%)';
@@ -131,9 +128,9 @@ html, body {
 }
 ```
 
-A slightly more complicated example can be found [here](/example/).
+A more complicated example with 2-way scrolling & endless swiping can be found [here](/example/).
 
-#### SPA support
+### SPA support
 
 Since this package doesn't use any dependencies it is framework-agnostic. Nothing stops you from doing something like this in react for example:
 ```tsx
