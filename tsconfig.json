@@ -1,7 +1,11 @@
 {
+  "include": ["src"],
   "compilerOptions": {
     "target": "ES2016",
+    "rootDir": "src",
+    "outDir": "dist",
     "baseUrl": "src",
+    "declaration": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "noImplicitAny": true,

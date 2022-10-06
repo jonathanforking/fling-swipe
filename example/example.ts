@@ -1,4 +1,4 @@
-import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture, Mode } from 'index';
+import { addFlingSwipe, SwipeableHTMLElement, Movement, Direction, Gesture, Mode } from '../src/index';
 
 // Maps order of CSS transforms to DIV elements inside swipeable 
 const enum ChildIndex {
