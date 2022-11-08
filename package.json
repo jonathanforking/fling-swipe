@@ -1,11 +1,11 @@
 {
   "name": "fling-swipe",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Simple standalone fling/swipe gesture implementation written in TypeScript.",
   "main": "dist/index.ts",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prepublish": "tsc"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
