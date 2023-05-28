@@ -1,5 +1,5 @@
 export const enum Movement {
-  HORIZONTAL = 0,
+  HORIZONTAL,
   VERTICAL,
   NONE
 }
