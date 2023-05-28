@@ -1,6 +1,6 @@
 {
   "name": "fling-swipe",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Self-contained fling/swipe gesture implementation written in TypeScript.",
   "keywords": ["fling", "flick", "swipe", "carousel", "gallery", "slideshow", "slider", "drag", "touch", "mobile", "app", "ui", "library", "plugin", "small", "horizontal", "vertical"],
   "main": "dist/index.ts",

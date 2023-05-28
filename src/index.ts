@@ -181,11 +181,13 @@ export function removeFlingSwipe(
 
 function processCallbacks<T extends StartCallback | UpdateCallback | CompleteCallback>(
   callbacks: T[],
-  ...params: Parameters<T>
+  param1: SwipeableHTMLElement,
+  param2: Movement | Direction | number,
+  param3?: Gesture
 ) {
   for (let i = 0, l = callbacks.length; i < l; i++) {
     // @ts-ignore Unfortunately typescript fails here
-    callbacks[i](...params);
+    callbacks[i](param1, param2, param3);
   }
 }
 
